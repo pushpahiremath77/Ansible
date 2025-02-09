@@ -1,0 +1,67 @@
+---
+- name: Install and configure mysql database
+  hosts: database
+  become: yes
+
+  tasks:
+  - name: Update package cache
+    apt:
+      update_cache: yes
+
+  - name: Install mysql server
+    apt:
+      name: mysql-server
+      state: present
+
+  - name: create directory MySQL
+    file:
+      path: /data/mysql
+      state: directory
+      owner: mysql
+      group: mysql
+      mode: '0755'
+
+  - name: Comment out the localhost bind-address if present
+    lineinfile:
+      path: /etc/mysql/mysql.conf.d/mysqld.cnf
+      regexp: '^bind-address'
+      line: 'bind-address = 0.0.0.0'
+      state: present
+
+  - name: Comment out existing mysqlx-bind-address if present
+    lineinfile:
+      path: /etc/mysql/mysql.conf.d/mysqld.cnf
+      regexp: '^mysqlx-bind-address'
+      line: 'mysqlx-bind-address = 0.0.0.0'
+      state: present
+
+  - name: Start the mysql server
+    service:
+     name: mysql
+     state: started
+
+
+  - name: Create chatapp database
+    mysql_db:
+      name: chatappdb
+      state: present
+      login_user: root
+      login_password: "Root@123"
+      login_unix_socket: /run/mysqld/mysqld.sock
+
+  - name: Create user and grant access to chatappdb
+    mysql_user:
+      name: chatappuser
+      password: "Chatapp@123"
+      priv: 'chatappdb.*:ALL'
+      login_user: root
+      login_password: "Root@123"
+      login_unix_socket: /run/mysqld/mysqld.sock
+      state: present
+      column_case_sensitive: true
+
+  - name: Restart mysql
+    systemd:
+      name: mysql
+      state: restarted
+
